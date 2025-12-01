@@ -262,12 +262,21 @@ async function loadLetterData(year) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        console.log(`편지 데이터 로드 성공 (${year}년):`, data);
         // 캐시에 저장
         letterDataCache[year] = data;
         return data;
     } catch (error) {
         console.error(`편지 데이터 로드 실패 (${year}년):`, error);
-        alert(`해당 연도(${year}년)의 편지 데이터를 불러올 수 없습니다.\n\nletters/${year}.json 파일을 확인해주세요.`);
+        console.error('에러 상세:', error.message);
+        console.error('현재 URL:', window.location.href);
+        
+        // CORS 에러인 경우 특별 안내
+        if (error.message.includes('CORS') || window.location.protocol === 'file:') {
+            alert(`편지 데이터를 불러올 수 없습니다.\n\n로컬 파일(file://)로 열면 작동하지 않습니다.\n\n다음 중 하나를 시도해주세요:\n1. 로컬 서버 실행 (python3 -m http.server 8000)\n2. 웹 호스팅 서비스 사용 (Netlify, GitHub Pages 등)`);
+        } else {
+            alert(`해당 연도(${year}년)의 편지 데이터를 불러올 수 없습니다.\n\nletters/${year}.json 파일을 확인해주세요.\n\n콘솔(F12)에서 자세한 에러를 확인할 수 있습니다.`);
+        }
         return null;
     }
 }
@@ -306,10 +315,13 @@ async function loadLetterContent(year) {
     const data = await loadLetterData(year);
     if (!data) return;
     
+    console.log(`편지 내용 로드 중 (${year}년):`, data.typed.substring(0, 50) + '...');
+    
     // 타이핑 편지
     const typedLetter = document.getElementById('typedLetter');
     if (typedLetter) {
         typedLetter.innerHTML = data.typed;
+        console.log('타이핑 편지 내용 업데이트 완료');
     }
     
     // 손편지 이미지
