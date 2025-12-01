@@ -257,13 +257,17 @@ async function loadLetterData(year) {
     }
     
     try {
-        const response = await fetch(`letters/${year}.json`);
+        // 캐시 버스팅: 타임스탬프를 쿼리 파라미터로 추가하여 항상 최신 파일 로드
+        const timestamp = new Date().getTime();
+        const response = await fetch(`letters/${year}.json?t=${timestamp}`, {
+            cache: 'no-store' // 브라우저 캐시 무시
+        });
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
         console.log(`편지 데이터 로드 성공 (${year}년):`, data);
-        // 캐시에 저장
+        // 캐시에 저장 (페이지 새로고침 시에는 새로 로드됨)
         letterDataCache[year] = data;
         return data;
     } catch (error) {
