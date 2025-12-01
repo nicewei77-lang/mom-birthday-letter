@@ -1,28 +1,5 @@
-// 연도별 편지 데이터
-// 편지 내용을 수정하려면 아래 데이터를 변경하세요.
-// letters/ 폴더의 JSON 파일 내용을 여기에 복사해서 사용할 수 있습니다.
-const letterData = {
-    2025: {
-        date: '2025년',
-        typed: '엄마, 생일 축하해요! 💕<br><br>올해도 정말 고생 많으셨어요. 엄마의 사랑과 희생이 없었다면 저는 지금 여기 없었을 거예요.<br><br>항상 건강하시고 행복하세요. 사랑해요!',
-        handwritten: 'images/handwritten.jpg',
-        photos: [
-            'images/photos/photo1.jpg',
-            'images/photos/photo2.jpg',
-            'images/photos/photo3.jpg'
-        ]
-    },
-    2026: {
-        date: '2026년',
-        typed: '엄마, 생일 축하해요! 💕<br><br>올해도 정말 고생 많으셨어요.<br><br>항상 건강하시고 행복하세요. 사랑해요!',
-        handwritten: 'images/handwritten.jpg',
-        photos: [
-            'images/photos/photo1.jpg',
-            'images/photos/photo2.jpg',
-            'images/photos/photo3.jpg'
-        ]
-    }
-};
+// 연도별 편지 데이터 캐시
+const letterDataCache = {};
 
 let currentYear = null;
 const PASSWORD = '7135';
@@ -113,10 +90,11 @@ window.addEventListener('DOMContentLoaded', function() {
                 initScrollAnimations();
                 
                 // 사진 갤러리 초기화 (데이터가 있는 경우만)
-                const data = letterData[currentYear];
-                if (data && data.photos && data.photos.length > 0) {
-                    initPhotoGallery();
-                }
+                loadLetterData(currentYear).then(data => {
+                    if (data && data.photos && data.photos.length > 0) {
+                        initPhotoGallery();
+                    }
+                });
                 
                 // 하트 효과 시작
                 startHearts();
@@ -271,13 +249,35 @@ function startHearts() {
     setInterval(createHeart, 2000); // 600ms -> 2000ms (2초마다)
 }
 
-function selectYear(year) {
+// JSON 파일에서 편지 데이터 로드
+async function loadLetterData(year) {
+    // 캐시에 있으면 캐시에서 반환
+    if (letterDataCache[year]) {
+        return letterDataCache[year];
+    }
+    
+    try {
+        const response = await fetch(`letters/${year}.json`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        // 캐시에 저장
+        letterDataCache[year] = data;
+        return data;
+    } catch (error) {
+        console.error(`편지 데이터 로드 실패 (${year}년):`, error);
+        alert(`해당 연도(${year}년)의 편지 데이터를 불러올 수 없습니다.\n\nletters/${year}.json 파일을 확인해주세요.`);
+        return null;
+    }
+}
+
+async function selectYear(year) {
     currentYear = year;
     
     // 편지 데이터 가져오기
-    const data = letterData[year];
+    const data = await loadLetterData(year);
     if (!data) {
-        alert(`해당 연도(${year}년)의 편지 데이터가 없습니다.\n\nscript.js 파일에서 편지 데이터를 추가해주세요.`);
         return;
     }
     
@@ -294,7 +294,7 @@ function selectYear(year) {
     envelopeWrapper.style.display = 'flex';
     
     // 편지 내용 미리 로드
-    loadLetterContent(year);
+    await loadLetterContent(year);
     
     // 편지가 다시 열 수 있도록 초기화
     isOpened = false;
@@ -302,8 +302,8 @@ function selectYear(year) {
     letterContent.classList.remove('show');
 }
 
-function loadLetterContent(year) {
-    const data = letterData[year];
+async function loadLetterContent(year) {
+    const data = await loadLetterData(year);
     if (!data) return;
     
     // 타이핑 편지
